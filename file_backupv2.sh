@@ -1,30 +1,46 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# this script accepts input that is provided as a parameter ($1) if $1 is emtpy, then it is assigned /dev/stdin (standard input)
+# Description: this is a file backup script version 2.0 which uses a function.
 
-# for more info see: https://stackoverflow.com/questions/6980090/how-to-read-from-a-file-or-standard-input-in-bash
+# create/declare a function
+file_backup()
+{
+  	# declare a local variable called FILE
+	local FILE;
+  
+  	# prompt user for input and store it within FILE
+	read -p 'Input the file name: ' FILE;
+  
+  	# create/declare local variable called NEWFILE and give it the value of user input along with today's date and add the .bak extension
+	local NEWFILE="${FILE}_$(date +%m-%d-%y).bak";
 
-########
-# code #
-########
-
-
-# while loop that prompts for input and stores it within variable LINE
-while read -p 'Enter Input: ' LINE
-do
-	# if statement to check if user inputs 'exit'
-	if [[ $LINE == 'exit' ]]
+  	# if statement to check if the file exists
+	if [[ "${FILE}" ]]
 	then
-		# break out of while loop
-		break;
+    		# display message
+		echo -e "\nBacking up file...";
+    
+    		# copy file to new file
+		cp -p ${FILE} ${NEWFILE};
+
+    		# if statement to check if command ran successfully
+		if [[ $? == 0 ]]
+		then
+      			# display message
+			echo -e "\nBackup create successfully. ";
+		fi
 	else
-		# output user input
-		echo -e "\nYou've inputted: $LINE\n";
+    		# display message
+		echo -e "\nPlease provide a file name: ";
+		
+		# error exit
+		return 1;
 	fi
-done < "${1:-/dev/stdin}" # sends STDIN to the command
+	
+}
 
-# NOTE: the line "${1:-/dev/stdin}" is a way to check if $1 is empty, if it is, then it is assigned the input from /dev/stdin (standard input).
-
+# call the function
+file_backup;
 
 
 #############
@@ -36,7 +52,7 @@ done < "${1:-/dev/stdin}" # sends STDIN to the command
 ##########################################################
 echo -e "\nScripted by: ";
 echo -e "\n";
-echo -e "\033[31;5m";
+echo -e "\033[0;5m";
 echo " ██▓ ██████▄▄▄█████▓▄▄▄      ▄████▄  ██ ▄█▒███████▒";
 echo "▓██▒██    ▒▓  ██▒ ▓▒████▄   ▒██▀ ▀█  ██▄█▒▒ ▒ ▒ ▄▀░";
 echo "▒██░ ▓██▄  ▒ ▓██░ ▒▒██  ▀█▄ ▒▓█    ▄▓███▄░░ ▒ ▄▀▒░ ";

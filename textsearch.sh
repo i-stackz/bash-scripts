@@ -1,29 +1,42 @@
-#!/bin/bash
-
-# this script accepts input that is provided as a parameter ($1) if $1 is emtpy, then it is assigned /dev/stdin (standard input)
-
-# for more info see: https://stackoverflow.com/questions/6980090/how-to-read-from-a-file-or-standard-input-in-bash
-
-########
-# code #
-########
+#!/usr/bin/env bash
 
 
-# while loop that prompts for input and stores it within variable LINE
-while read -p 'Enter Input: ' LINE
+# multi-line comment
+<< com
+
+ Author: iStackz
+ 
+ Date: 6/17/2023 
+
+ Description: this script is to search for the specified text within the given directory or file
+
+com
+# ============================= #
+
+
+# request user input and store it within a variable.
+read -p "Enter text to search for: " SEARCH;
+
+# reques user input and store it within a variable
+read -p "Enter where to search (full path): " PATH;
+
+
+# logic to conduct search
+for i in $PATH
 do
-	# if statement to check if user inputs 'exit'
-	if [[ $LINE == 'exit' ]]
-	then
-		# break out of while loop
-		break;
-	else
-		# output user input
-		echo -e "\nYou've inputted: $LINE\n";
-	fi
-done < "${1:-/dev/stdin}" # sends STDIN to the command
+	# command to search
+	grep -r -i -e "$SEARCH" "$PATH";
 
-# NOTE: the line "${1:-/dev/stdin}" is a way to check if $1 is empty, if it is, then it is assigned the input from /dev/stdin (standard input).
+	# check if command was successful
+  	if [[ $? == 0 ]]
+  	then
+		# display message
+      		echo -e "\nEureka! found $SEARCH in $PATH";
+  	else	
+		# display message
+      		echo -e "\nSorry, didn't find what you are looking for";
+  	fi
+done
 
 
 
@@ -36,7 +49,7 @@ done < "${1:-/dev/stdin}" # sends STDIN to the command
 ##########################################################
 echo -e "\nScripted by: ";
 echo -e "\n";
-echo -e "\033[31;5m";
+echo -e "\033[0;5m";
 echo " ██▓ ██████▄▄▄█████▓▄▄▄      ▄████▄  ██ ▄█▒███████▒";
 echo "▓██▒██    ▒▓  ██▒ ▓▒████▄   ▒██▀ ▀█  ██▄█▒▒ ▒ ▒ ▄▀░";
 echo "▒██░ ▓██▄  ▒ ▓██░ ▒▒██  ▀█▄ ▒▓█    ▄▓███▄░░ ▒ ▄▀▒░ ";

@@ -1,31 +1,40 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# this script accepts input that is provided as a parameter ($1) if $1 is emtpy, then it is assigned /dev/stdin (standard input)
+# Description: This script will address log messages that populate /var/log/messages, stating
+# 'Audit daemon log file is larger than max size'
 
-# for more info see: https://stackoverflow.com/questions/6980090/how-to-read-from-a-file-or-standard-input-in-bash
+# to fix this we have to set max_log_file parameter/option to a bigger number OR 
+# set max_log_file_action to 'ROTATE' instead of syslog
 
-########
-# code #
-########
+# Author: istackz
 
+# search for error string within /var/log/messages
+if [[ $(grep -i 'audit daemon log file is larger than max size' /var/log/messages) ]]
+then
+  # search the /etc/audit/auditd.conf file for the 'max_log_file_action' parameter
+  if [[ $(grep -i 'max_log_file_action' /etc/audit/auditd.conf) ]]
+  then
+    # check if it currently set to 'syslog'
+    if [[ $(grep -i 'max_log_file_action' /etc/audit/auditd.conf | cut -d '=' -f 2) == 'syslog' ]]
+    then
+      # search and replace 'syslog' with 'ROTATE'
+      sed -r -i 's/max_log_file_action..+/max_log_file_action = ROTATE/' /etc/audit/auditd.conf;
+    fi
+  else
+    # display message if 'max_log_file_action' is not found
+    echo -e "\nCould not find 'max_log_file_action' parameter in /etc/audit/auditd.conf, will add it now";
 
-# while loop that prompts for input and stores it within variable LINE
-while read -p 'Enter Input: ' LINE
-do
-	# if statement to check if user inputs 'exit'
-	if [[ $LINE == 'exit' ]]
-	then
-		# break out of while loop
-		break;
-	else
-		# output user input
-		echo -e "\nYou've inputted: $LINE\n";
-	fi
-done < "${1:-/dev/stdin}" # sends STDIN to the command
+    # add parameter to file
+    sed -i '$a max_log_file_action = ROTATE' /etc/audit/auditd.conf;
+  fi
+else
+  # display message if string is not found
+  echo -e "\nString 'Audit daemon log file is larger than max size' was not found within /var/log/messages";
+  echo -e "\nWill do nothing";
 
-# NOTE: the line "${1:-/dev/stdin}" is a way to check if $1 is empty, if it is, then it is assigned the input from /dev/stdin (standard input).
-
-
+  # exit with a status of 0
+  exit 0;
+fi
 
 #############
 # my banner #
@@ -36,7 +45,7 @@ done < "${1:-/dev/stdin}" # sends STDIN to the command
 ##########################################################
 echo -e "\nScripted by: ";
 echo -e "\n";
-echo -e "\033[31;5m";
+echo -e "\033[0;5m";
 echo " ██▓ ██████▄▄▄█████▓▄▄▄      ▄████▄  ██ ▄█▒███████▒";
 echo "▓██▒██    ▒▓  ██▒ ▓▒████▄   ▒██▀ ▀█  ██▄█▒▒ ▒ ▒ ▄▀░";
 echo "▒██░ ▓██▄  ▒ ▓██░ ▒▒██  ▀█▄ ▒▓█    ▄▓███▄░░ ▒ ▄▀▒░ ";

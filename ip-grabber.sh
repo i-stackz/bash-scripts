@@ -1,30 +1,26 @@
 #!/bin/bash
 
-# this script accepts input that is provided as a parameter ($1) if $1 is emtpy, then it is assigned /dev/stdin (standard input)
 
-# for more info see: https://stackoverflow.com/questions/6980090/how-to-read-from-a-file-or-standard-input-in-bash
-
-########
-# code #
-########
+# Description: this script finds your ip and saves it to a log file.
 
 
-# while loop that prompts for input and stores it within variable LINE
-while read -p 'Enter Input: ' LINE
-do
-	# if statement to check if user inputs 'exit'
-	if [[ $LINE == 'exit' ]]
-	then
-		# break out of while loop
-		break;
-	else
-		# output user input
-		echo -e "\nYou've inputted: $LINE\n";
-	fi
-done < "${1:-/dev/stdin}" # sends STDIN to the command
+# check if the ifconfig command exists
+if [[ -n $(ifconfig) ]]
+then
+	# store the IPv4 address using ifconfig
+	IP=$(ifconfig | egrep "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" | head -n 1 | cut -b 14-24);
+else
+	# store the IPv4 command using ip
+	#IP=$(ip -c addr | grep -w 'inet' | grep -v '127' | grep -E '(([0-9]{1,3}\.){3}[0-9])' | sed 's/inet//' | sed 's/ //' | cut -d '/' -f 1);
 
-# NOTE: the line "${1:-/dev/stdin}" is a way to check if $1 is empty, if it is, then it is assigned the input from /dev/stdin (standard input).
+	IP=$(ip -c addr | grep -w 'inet' | grep -v '127' | grep -o -E "([0-9]{1,3}\.){3}[0-9]{1,3}" | grep -v '255');
+fi
 
+# display message
+echo -e "\nYour IPv4 address is: $IP\n";
+
+# output IPv4 address to ip.log
+echo "$IP" > ./ip.log;
 
 
 #############
