@@ -3,7 +3,7 @@
 # Description: This script will ssh to a host and run a command to check /etc/services to check that a certain service/program is installed
 # was useful to me at work. You would need to have your keys pushed to the machines prior to running the script.
 #
-# Author: E. Gomez
+# Author: iStackz
 # Date: 1/29/25
 
 # variables/Array
