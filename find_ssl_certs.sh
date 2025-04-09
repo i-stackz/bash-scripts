@@ -1,93 +1,162 @@
-
-Conversation opened. 1 unread message.
-
-Skip to content
-Using Virginia's Community Colleges Mail with screen readers
-
-1 of 179
-version 2.0 of ssl search script
-Inbox
-
-Estiben Gomez <eme2417@email.vccs.edu>
-2:20 PM (2 hours ago)
-to me
-
 #!/usr/bin/env bash
 
 #################################################################
 # Date: 4/3/2025                                                #
 # Author: E. Gomez                                              #
 # Description: This script will search and find SSL certs       #
-# Edited 4/7/2025						#
 #################################################################
 
 # variables for httpd
 SSL_CERTS="";
 EXPIRATION_DATE="";
 
-# logic to find HTTP's SSL cert path
+# logic to find cert path for HTTPS server
 if [[ $(yum list installed | grep -i 'httpd') || $(ps -ef | grep -i 'httpd') ]]
 then
-    # search for the ssl.conf file
-    for i in $(find / -xdev -type f \( -name "ssl.conf" -o -name "*ssl.conf" -o -name "*ssl*.conf" \))
+    # search for HTTPD config file
+    for FILE in $(find / -xdev -type f \( -name "ssl.conf" -o -name "*ssl.conf" -o -name "*ssl*.conf"\))
     do
         # TEST #
-        #grep -i 'sslcertificatefile' $i;
+        #grep -i 'SSLCertificateFile' $FILE;
 
-        # if statement to check if grep command is not empty
-        if [[ -n $(grep -i 'sslcertificatefile' $i) ]]
+        # set variable value
+        SSL_CERTS=$(grep -i 'SSLCertificateFile' $FILE | awk '{print $2}' | tr -d '\r\n'); # removes any newline or return characters as well
+
+        # check that the variable is not empty
+        if [[ -n $SSL_CERTS ]]
         then
-            # set variable
-            SSL_CERT=$(grep -i 'sslcertificatefile' $i | awk '{print $2}' | cut -d '"' -f 2);
+            # sanitize variable
+            if [[ $SSL_CERTS =~ \" ]]
+            then
+                # remove double quotes
+                SSL_CERTS=$(echo $SSL_CERT | cut -d '"' -f 2);
+            fi
 
-            # TEST #
-            #echo -e "\n$SSL_CERT\n";
-
-            # display message
-            echo -e "\nSearching within $i. The SSL certificate path is specified in $i: $SSL_CERT";
-            echo -e "Will now extract the expiration date from the certificate";
-            echo -e "The certificate \e[32m$SSL_CERT\e[0m is set to expire \e[31m$EXPIRATION_DATE\e[0m\n";
-
-	    # clean variables
-	    unset {SSL_CERTS,EXPIRATION_DATE};
+            if [[ $(echo $SSL_CERTS | grep -i "'") ]]
+            then
+                # remove single quotes
+                SSL_CERTS=$(echo $SSL_CERTS | cut -d "'" -f 2);
+            fi
         fi
+
+        # TEST #
+        #echo -e "\n$SSL_CERTS"
+
+        # set expiration date
+        EXPIRATION_DATE=$(openssl x509 -in $SSL_CERTS -noout -enddate);
+
+        # display message
+        echo -e "\nSearching within \e[36m$FILE\e[0m, the cert path set within the file is: \e[33m${SSL_CERTS}\e[0m";
+        echo -e "Will now extract the expiration date from the certificate";
+        echo -e "\n[32m${SSL_CERTS}\e[0m is set to expire: \e[31m${EXPIRATION_DATE}\e[0m\n";
+
+        # unset variables
+        unset SSL_CERTS;
+        unset EXPIRATION_DATE;
     done
 fi
 
-# variables for Apache Tomcat
+
+# variables for Tomcat Apache
 TOMCAT_SSL_CERT="";
 TOMCAT_EXPIRATION_DATE="";
 KEYSTORE_TYPE="";
 KEYSTORE_PASS="";
 
-# logic to find Apache Tomcat's SSL cert path
-if [[ $(yum list installed | grep -i 'tomcat') || $(rpm -qa | grep -i 'tomcat') || $(ps -ef | grep -i 'tomcat') ]]
-then
-    # search for the server.xml file
-    for i in $(find / -xdev -type f \( -name "server.xml"\))
-    do
-        if [[ -n $(grep -i 'certificatekeystorefile' $i) ]]
+# search for apache tomcat configuration files
+for FILE in $(find / -xdev -type f \( -name 'server.xml'\))
+do
+    # set variable values
+    TOMCAT_SSL_CERT=$(grep -i 'certificateKeystoreFile' $FILE);
+    KEYSTORE_PASS=$(grep -i 'certificateKeystorePass' $FILE);
+    KEYSTORE_TYPE=$(grep -i 'certificateKeystoreType' $FILE);
+
+    # sanitize variables
+    if [[ -n $TOMCAT_SSL_CERT ]]
+    then
+        if [[ $TOMCAT_SSL_CERT =~ ^[[:space:]].+ ]]
         then
-
-            # set variables
-            TOMCAT_SSL_CERT=$(grep -i 'certificatekeystorefile' $i | cut -d '=' -f 2 | cut -d '"' -f 2);
-            KEYSTORE_TYPE=$(grep -i 'certificatekeystoretype' $i | cut -d '=' -f 2 | cut -d '"' -f 2);
-            KEYSTORE_PASS=$(grep -i 'certificatekeystorepass' $i | cut -d '=' -f 2 | cut -d '=' -f 2 | cut -d '"' -f 2);
-            TOMCAT_EXPIRATION_DATE=$(openssl ${KEYSTORE_TYPE,,} -in $TOMCAT_SSL_CERT -nokeys -clcerts -passin pass:$KEYSTORE_PASS | openssl x509 -noout -enddate);
-
-            # TESTS #
-            #echo $TOMCAT_SSL_CERT;
-            #echo $KEYSTORE_TYPE;
-            #echo $KEYSTORE_PASS;
-
-            # display message
-            echo -e "\nSearching within $i. The SSL certificate path set within $i is $TOMCAT_SSL_CERT";
-            echo -e "Will now extract the expiration date from $TOMCAT_SSL_CERT";
-            echo -e "The Apache Tomcat certificate \e[32m$TOMCAT_SSL_CERT\e[0m is set to expire \e[31m$TOMCAT_EXPIRATION_DATE\e[0m\n";
-
-            # clean up the variables
-            unset {TOMCAT_SSL_CERT,KEYSTORE_TYPE,KEYSTORE_PASS,TOMCAT_EXPIRATION_DATE};
+            TOMCAT_SSL_CERT=$(echo $TOMCAT_SSL_CERT | tr -d '\t');
         fi
-    done
-fi
 
+        if [[ $TOMCAT_SSL_CERT =~ = ]]
+        then
+            TOMCAT_SSL_CERT=$(echo $TOMCAT_SSL_CERT | cut -d '=' -f 2);
+        fi
+
+        if [[ $TOMCAT_SSL_CERT =~ \" ]]
+        then
+            TOMCAT_SSL_CERT=$(echo $TOMCAT_SSL_CERT | cut -d '"' -f 2);
+        fi
+
+        if [[ $(echo $TOMCAT_SSL_CERT | grep "'") ]]
+        then
+            TOMCAT_SSL_CERT=$(echo $TOMCAT_SSL_CERT | cut -d "'" -f 2);
+        fi
+    fi
+
+    if [[ -n $KEYSTORE_TYPE ]]
+    then
+        if [[ $KEYSTORE_TYPE =~ ^[[:space:]].+ ]]
+        then
+            KEYSTORE_TYPE=$(echo $KEYSTORE_TYPE | tr -d '\t');
+        fi
+
+        if [[ $KEYSTORE_TYPE =~ = ]]
+        then
+            KEYSTORE_TYPE=$(echo $KEYSTORE_TYPE | cut -d '=' -f 2);
+        fi
+
+        if [[ $KEYSTORE_TYPE =~ \" ]]
+        then
+            KEYSTORE_TYPE=$(echo $KEYSTORE_TYPE | cut -d '"' -f 2);
+        fi
+
+        if [[ $(echo $KEYSTORE_TYPE | grep "'") ]]
+        then
+            KEYSTORE_TYPE=$(echo $KEYSTORE_TYPE | cut -d "'" -f 2);
+        fi
+    fi
+
+    if [[ -n $KEYSTORE_PASS ]]
+    then
+        if [[ $KEYSTORE_PASS =~ ^[[:space:]].+ ]]
+        then
+            KEYSTORE_PASS=$(echo $KEYSTORE_PASS | tr -d '\t');
+        fi
+
+        if [[ $KEYSTORE_PASS =~ = ]]
+        then
+            KEYSTORE_PASS=$(echo $KEYSTORE_PASS | cut -d '=' -f 2);
+        fi
+
+        if [[ $KEYSTORE_PASS =~ \" ]]
+        then
+            KEYSTORE_PASS=$(echo $KEYSTORE_PASS | cut -d '"' -f 2);
+        fi
+
+        if [[ $(echo $KEYSTORE_PASS | grep "'") ]]
+        then
+            KEYSTORE_PASS=$(echo $KEYSTORE_PASS | cut -d "'" -f 2);
+        fi
+    fi
+
+    # TEST #
+    #echo $TOMCAT_SSL_CERT;
+    #echo $KEYSTORE_TYPE;
+    #echo $KEYSTORE_PASS;
+
+    # set expiration date variable
+    TOMCAT_EXPIRATION_DATE=$(openssl ${KEYSTORE_TYPE,,} -in ${TOMCAT_SSL_CERT} -nokeys -clcerts -passin pass:${KEYSTORE_PASS} | openssl x509 -noout -enddate);
+
+    # display messages
+    echo -e "\nSearching within \e[36m$FILE\e[0m, the cert path set within the file is: \e[33m${TOMCAT_SSL_CERT}\e[0m";
+    echo -e "Will now extract the expiration date from the certificate";
+    echo -e "\e[32m${TOMCAT_SSL_CERT}\e[0m is set to expire: \e[31m${TOMCAT_EXPIRATION_DATE}\e[0m\n";
+
+    # unset variables
+    unset TOMCAT_SSL_CERT;
+    unset KEYSTORE_PASS;
+    unset KEYSTORE_TYPE;
+    unset TOMCAT_EXPIRATION_DATE;
+done
