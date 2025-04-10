@@ -1,5 +1,3 @@
-## ChatGPT script version with suggested improvements implemented ##
-
 #!/usr/bin/env bash
 
 #################################################################
@@ -18,9 +16,7 @@ sanitize() {
     
     # variables
     local value="$1"
-   
-    value="$(echo "$value" | grep -v '^\s*#' | tr -d '\r\n')"; # remove any '#','\r','\n' characters
-    value="$(echo "$value" | xargs)";                     # Trim leading/trailing whitespace
+    value="$(echo "$value" | xargs)"                     # Trim leading/trailing whitespace
 
     # check if value contains equal sign
     if [[ $(echo "$value" | grep -i '=') ]]
@@ -60,6 +56,7 @@ then
             ISSUING_DATE=$(openssl x509 -in "$SSL_CERTS" -noout -startdate 2>/dev/null);
             EXPIRATION_DATE=$(openssl x509 -in "$SSL_CERTS" -noout -enddate 2>/dev/null);
 
+            # display message
             echo -e "\nSearching within \e[35m$FILE\e[0m ... Will now extract information from the certificate."
             echo -e "Certificate file: \e[33m$SSL_CERTS\e[0m";
             echo -e "Issuing CA: \e[36m$CA\e[0m";
@@ -83,7 +80,8 @@ then
         KEYSTORE_TYPE=$(sanitize "$(grep -i 'certificateKeystoreType' "$FILE")")
 
         # if statement to check if variable is not empty and if the variable's content is a file that exists
-        if [[ -n "$TOMCAT_SSL_CERT" && -f "$TOMCAT_SSL_CERT" ]]; then
+        if [[ -n "$TOMCAT_SSL_CERT" && -f "$TOMCAT_SSL_CERT" ]]
+        then
             # variables
             CMD_TYPE=${KEYSTORE_TYPE,,} # lowercase keystore type (e.g. pkcs12)
             CA=$(openssl "$CMD_TYPE" -in "$TOMCAT_SSL_CERT" -nokeys -clcerts -passin pass:"$KEYSTORE_PASS" 2>/dev/nullk | openssl x509 -noout -issuer | grep -oP 'CN\K.*' | cut -d '=' -f 2 | xargs); # grab the CN info from the cert
