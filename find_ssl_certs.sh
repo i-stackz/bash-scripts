@@ -20,12 +20,20 @@ then
         #grep -i 'SSLCertificateFile' $FILE;
 
         # set variable value
-        SSL_CERTS=$(grep -i 'SSLCertificateFile' $FILE | awk '{print $2}' | tr -d '\r\n'); # removes any newline or return characters as well
+	SSL_CERTS=$(grep -i 'SSLCertificateFile' "$FILE" | grep -v '^\s*#' | xargs | tr -d '\r\n');
 
         # check that the variable is not empty
         if [[ -n $SSL_CERTS ]]
         then
             # sanitize variable
+	    if [[ $(echo $SSL_CERTS | grep -i '=') ]]
+	    then
+		SSL_CERTS=$(echo "$SSL_CERTS" | cut -d '=' -f 2);
+	    else
+		SSL_CERTS=$(echo "$SSL_CERTS" | awk '{print $2}');
+
+	    fi
+
             if [[ $SSL_CERTS =~ \" ]]
             then
                 # remove double quotes
@@ -42,13 +50,17 @@ then
         # TEST #
         #echo -e "\n$SSL_CERTS"
 
-        # set expiration date
+        # cert info
+	CA=$(openssl x509 -in $SSL_CERTS -noout -issuer | grep -oP 'CN\K.*' | cut -d '=' -f 2 | xargs);
+	ISSUING_DATE=$(openssl x509 -in "$SSL_CERTS" -noout -startdate);
         EXPIRATION_DATE=$(openssl x509 -in $SSL_CERTS -noout -enddate);
 
         # display message
-        echo -e "\nSearching within \e[36m$FILE\e[0m, the cert path set within the file is: \e[33m${SSL_CERTS}\e[0m";
-        echo -e "Will now extract the expiration date from the certificate";
-        echo -e "\n[32m${SSL_CERTS}\e[0m is set to expire: \e[31m${EXPIRATION_DATE}\e[0m\n";
+	echo -e "\nSearching within \e[35m${FILE}\e[0m ... Will now extract certificate info."
+	echo -e "Certificate file: \e[32m${SSL_CERTS}\e[0m";
+	echo -e "Issuing CA: \e[36m${CA}\e[0m";
+	echo -e "Certificate start date: \e[32m${ISSUING_DATE}\e[0m";
+	echo -e "Certificate expiration date: \e[31m${EXPIRATION_DATE}\e[0m"
 
         # unset variables
         unset SSL_CERTS;
@@ -67,16 +79,16 @@ KEYSTORE_PASS="";
 for FILE in $(find / -xdev -type f \( -name 'server.xml'\))
 do
     # set variable values
-    TOMCAT_SSL_CERT=$(grep -i 'certificateKeystoreFile' $FILE);
-    KEYSTORE_PASS=$(grep -i 'certificateKeystorePass' $FILE);
-    KEYSTORE_TYPE=$(grep -i 'certificateKeystoreType' $FILE);
+    TOMCAT_SSL_CERT=$(grep -i 'certificateKeystoreFile' $FILE | grep -v '^\s*#');
+    KEYSTORE_PASS=$(grep -i 'certificateKeystorePass' $FILE | grep -v '^\s*#');
+    KEYSTORE_TYPE=$(grep -i 'certificateKeystoreType' $FILE | grep -v '^\s*#');
 
     # sanitize variables
     if [[ -n $TOMCAT_SSL_CERT ]]
     then
         if [[ $TOMCAT_SSL_CERT =~ ^[[:space:]].+ ]]
         then
-            TOMCAT_SSL_CERT=$(echo $TOMCAT_SSL_CERT | tr -d '\t');
+            TOMCAT_SSL_CERT=$(echo $TOMCAT_SSL_CERT | xargs);
         fi
 
         if [[ $TOMCAT_SSL_CERT =~ = ]]
@@ -99,7 +111,7 @@ do
     then
         if [[ $KEYSTORE_TYPE =~ ^[[:space:]].+ ]]
         then
-            KEYSTORE_TYPE=$(echo $KEYSTORE_TYPE | tr -d '\t');
+            KEYSTORE_TYPE=$(echo $KEYSTORE_TYPE | xargs);
         fi
 
         if [[ $KEYSTORE_TYPE =~ = ]]
@@ -147,16 +159,22 @@ do
     #echo $KEYSTORE_PASS;
 
     # set expiration date variable
+    CA=$(openssl ${KEYSTORE_TYPE,,} -in ${TOMCAT_SSL_CERT} -nokeys -clcerts -passin pass:${KEYSTORE_PASS} | openssl x509 -noout -issuer | grep -oP 'CN\K.*' | cut -d '=' -f 2);
+    TOMCAT_ISSUING_DATE=$(openssl ${KEYSTORE_TYPE,,} -in ${TOMCAT_SSL_CERT} -nokeys -clcerts -passin pass:${KEYSTORE_PASS} | openssl x509 -noout -startdate);
     TOMCAT_EXPIRATION_DATE=$(openssl ${KEYSTORE_TYPE,,} -in ${TOMCAT_SSL_CERT} -nokeys -clcerts -passin pass:${KEYSTORE_PASS} | openssl x509 -noout -enddate);
 
     # display messages
-    echo -e "\nSearching within \e[36m$FILE\e[0m, the cert path set within the file is: \e[33m${TOMCAT_SSL_CERT}\e[0m";
-    echo -e "Will now extract the expiration date from the certificate";
-    echo -e "\e[32m${TOMCAT_SSL_CERT}\e[0m is set to expire: \e[31m${TOMCAT_EXPIRATION_DATE}\e[0m\n";
+    echo -e "\nSearching within \e[35m$FILE\e[0m ... Will now extract cert info.";
+    echo -e "Certificate file: \e[33m${TOMCAT_SSL_CERT}\e[0m";
+    echo -e "Issuing CA: \e[36m${CA}\e[0m";
+    echo -e "Certificate start date: \e[32m${}\e[0m";
+    echo -e "Certificate expiration date: \e[31m${TOMCAT_EXPIRATION_DATE}\e[0m\n";
 
     # unset variables
     unset TOMCAT_SSL_CERT;
     unset KEYSTORE_PASS;
     unset KEYSTORE_TYPE;
     unset TOMCAT_EXPIRATION_DATE;
+    unset CA;
+    unset TOMCAT_ISSUING_DATE;
 done
