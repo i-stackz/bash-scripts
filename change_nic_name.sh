@@ -3,7 +3,7 @@
 # Description: This script will change the NIC's name to ens192 and ens224 to ensure compatibility with our
 # Ansible playbooks 
 
-# Author: E. Gomez
+# Author: iStackz
 # Date: 9/11/2025
 
 # check if user is root
